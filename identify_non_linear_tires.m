@@ -11,6 +11,7 @@ logged_x_t_t_1 = squeeze(out.x_t_t_1.Data);
 logged_r_t_t   = out.sigma_t_t.Data;
 logged_r_t_t_1 = out.sigma_t_t_1.Data;
 logged_Ad      = out.Ad.Data;
+logged_u = out.u.Data;
 
 
 % 2. Run the RTS Smoother
@@ -81,109 +82,107 @@ fprintf('Plotting complete.\n');
 % Test estimated angular acceleration vs ground truth from Simulink's
 % Vehicle Dynamics Blockset:
 
-Caf = 63000; Car = 63000; m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
+Caf = out.Caf.Data; Car = out.Car.Data; m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
+[N, ~] = size(x_smooth); % To start for loop
 
-% vx_safe = max(vx_smooth(t), 1.0);
-Yv = -(2*Caf + 2*Car) / (m * x_smooth(:,1));
-Yr = -x_smooth(:,1) - (2*Caf*lf - 2*Car*lr) / (m * x_smooth(:,1));
-Nv = -(2*Caf*lf - 2*Car*lr) / (Izz * x_smooth(:,1));
-Nr = -(2*Caf*lf^2 + 2*Car*lr^2) / (Izz * x_smooth(:,1));
-B_lin_psi = (2*Caf*lf) / Izz;
+ddpsi_reconstructed = zeros(N,1);
 
-ddpsi_reconstructed = T*(Nv*x_smooth(:,2) + Nr*x_smooth(:,3) + (2*Caf*lf/Izz)*out.u.Data(:,2) + x_smooth(:,6)/Izz);% + 
+for t = 1:N
+    % Get the linear model (A and B) at this time step
+    % We must recalculate the linear terms just as we did in the KF
+    vx_safe = max(x_smooth(t,1), 1.0);
+    % Yv = -(2*Caf(t) + 2*Car(t)) / (m * vx_safe(t));
+    % Yr = -vx_smooth(t) - (2*Caf(t)*lf - 2*Car(t)*lr) / (m * vx_safe);
+    Nv = -(2*Caf(t)*lf - 2*Car(t)*lr) / (Izz * vx_safe);
+    Nr = -(2*Caf(t)*lf^2 + 2*Car(t)*lr^2) / (Izz * vx_safe);
+    B_lin_psi = (2*Caf(t)*lf) / Izz;
+    
+    % Reconstruct the linear part of the prediction
+    psi_ddot_lin = (Nv * x_smooth(t,2) + Nr * x_smooth(t,3)) + (B_lin_psi * logged_u(t,2));
+    
+    % Reconstruct the disturbance part of the prediction
+    psi_ddot_disturbance = x_smooth(t,6) / Izz;
+    
+    % The "reconstructed" acceleration is the sum of both
+    ddpsi_reconstructed(t) = psi_ddot_lin + psi_ddot_disturbance;
+end
+
 
 figure;
 plot(time_vector, ddpsi_reconstructed); hold on;
 plot(time_vector, out.gt_ddpsi.Data)
 
 
-%%
-% --- 4. Run the "Physics Whiz" Optimization ---
-% ... (Optimize using fmincon or lsqnonlin
-%      using the 'xi_psi_smoothed' data as the target) ...
-
+%% --- 4. Run the "Vehicle Ident" Optimization ---
 fprintf('Data has been smoothed and is ready for optimization.\n');
-
 fprintf('Step 1: Reconstructing ground truth target...\n');
 
+
+% Prep for identification (ie optimization)
 [N, ~] = size(x_smooth);
 y_target = zeros(N, 1);
 vx_smooth = x_smooth(:, 1);
 vy_smooth = x_smooth(:, 2);
 yaw_rate_smooth  = x_smooth(:, 3);
 xi_psi_smooth = x_smooth(:, 6);
-delta_log = out.u.Data(:,2); % Get the logged delta command
-
-Caf = 63000; Car = 63000; m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
+delta_log = logged_u(:,2); % Get the logged delta command
+Caf_log = out.Caf.Data; 
+Car_log = out.Car.Data; 
+m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
 
 for t = 1:N
-    % Get the linear model (A and B) at this time step
-    % We must recalculate the linear terms just as we did in the KF
     vx_safe = max(vx_smooth(t), 1.0);
-    Yv = -(2*Caf + 2*Car) / (m * vx_safe);
-    Yr = -vx_smooth(t) - (2*Caf*lf - 2*Car*lr) / (m * vx_safe);
-    Nv = -(2*Caf*lf - 2*Car*lr) / (Izz * vx_safe);
-    Nr = -(2*Caf*lf^2 + 2*Car*lr^2) / (Izz * vx_safe);
-    B_lin_psi = (2*Caf*lf) / Izz;
-    
-    % Reconstruct the linear part of the prediction
+    Caf_t = Caf_log(t);
+    Car_t = Car_log(t);
+    Nv = -(2*Caf_t*lf - 2*Car_t*lr) / (Izz * vx_safe);
+    Nr = -(2*Caf_t*lf^2 + 2*Car_t*lr^2) / (Izz * vx_safe);
+    B_lin_psi = (2*Caf_t*lf) / Izz;
     psi_ddot_lin = (Nv * vy_smooth(t) + Nr * yaw_rate_smooth(t)) + (B_lin_psi * delta_log(t));
-    
-    % Reconstruct the disturbance part of the prediction
     psi_ddot_disturbance = xi_psi_smooth(t) / Izz;
-    
-    % The "true" acceleration is the sum of both
     y_target(t) = psi_ddot_lin + psi_ddot_disturbance;
 end
-
+fprintf('Ground truth target reconstructed.\n');
 
 % --- 2. Prepare Data for Optimizer ---
-% (We already created y_target in Step 1)
 states_smooth = x_smooth;
-inputs_log = out.u.Data(:,:); % Your logged [gp, delta]
+inputs_log = logged_u; % Your logged [gp, delta]
+
+% --- THIS IS THE FIX: Load Fz data as a separate variable ---
+% (Make sure your 'To Workspace' blocks are named 'FzF_log' and 'FzR_log')
+Fz_data = [out.FzF.Data, out.FzR.Data]; % Creates an N x 2 matrix
+% --- END FIX ---
+
+% --- 3. Populate consts struct ---
 consts.lf = lf;
 consts.lr = lr;
 consts.Izz = Izz;
 consts.m = m;
 consts.g = 9.81;      % Gravitational acceleration
-consts.h = 0.35;       % Estimated CG height (in meters)
-consts.T_w = 1.5;     % Estimated track width (in meters)
-% (Add any other constants 'predict_NL_accel' needs)
+consts.h = 0.35;      % CG height (Make sure this matches your Simulink block!)
+% (We removed T_w as it's not in your sim's equations)
 
-% --- 3. Set up and Run Optimization ---
-% Initial guess for theta = [Bf, Cf, Df, Ef, Br, Cr, Dr, Er]
-% gt: B = 22; C = 1.8; D=1.6; E = 0.8;
-initial_guess = [20, 1.0, 1.2, 1.5, 30, 1.9, 0.7, 1.5];
+% --- 4. Set up and Run Optimization ---
+initial_guess = [20, 1.5, 1.5, 1.0, 20, 1.5, 1.5, 1.0];
+lb = [0, 0.2, 0, 0, 0, 0, 0, 0];
+ub = [40, 2.5, 2.5, 2.0, 40, 2.5, 2.5, 2.0];
 
-% Define lower and upper bounds 
-% B(Stiffness), C(Shape), D(Peak), E(Curvature)
-lb = [ 1, 1.0, 0.1, 0.1,  1, 1.0, 0.1, 0.1];
-ub = [40, 2.5, 2.5, 2, 40, 2.5, 2.5, 2];
+% --- THIS IS THE FIX: Add 'Fz_data' to the function handle ---
+loss_handle = @(p) loss_function(p, states_smooth, inputs_log, Fz_data, consts, y_target);
+% --- END FIX ---
 
-% Create an anonymous function handle for the loss
-loss_handle = @(p) loss_function(p, states_smooth, inputs_log, consts, y_target);
+options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
+                       'MaxIterations', 200, 'PlotFcn', {@optimplotfval, @optimplotstepsize});
 
-% Set optimizer options
-options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'interior-point', 'MaxIterations', 100);
-options.FiniteDifferenceType = 'central';
-options.FiniteDifferenceStepSize = 1e-4;
-options.OptimalityTolerance = 1e-6;
-options.StepTolerance = 1e-8;
-options.ConstraintTolerance = 1e-6;
-options.PlotFcn = {@optimplotx, @optimplotfval, @optimplotstepsize};
+fprintf('Step 2: Starting "Vehicle Ident" optimization...\n');
 
-
-% options = optimoptions('fmincon','Algorithm','interior-point');
-
-
-fprintf('Step 2: Starting "Physics Whiz" optimization...\n');
-
-% Run the optimizer!
 [theta_optimal, final_loss] = fmincon(loss_handle, initial_guess, ...
                                       [], [], [], [], lb, ub, [], options);
 
-% --- 4. Display Results ---
+% --- 5. Display Results ---
 fprintf('Optimization finished.\n');
 fprintf('Final Loss: %f\n', final_loss);
 disp('Optimal Pacejka Parameters (theta):');
 disp(theta_optimal);
+
+disp('Ground Truth Parameters (from simulator):');
+disp([22, 1.8, 1.6, 0.8, 22, 1.8, 1.6, 0.8]);
