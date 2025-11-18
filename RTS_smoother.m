@@ -28,6 +28,11 @@ fprintf('Starting RTS Smoother Backward Pass...\n');
 x_smooth = zeros(N, num_states);
 r_smooth = zeros(num_states, num_states, N);
 
+if size(logged_x_t_t_1, 1) == num_states
+    fprintf('Fixing orientation of logged_x_t_t_1 (was 6xN).\n');
+    logged_x_t_t_1 = logged_x_t_t_1';
+end
+
 % --- 2. Initialize the Backward Pass ---
 % The smoothed state at the final time step (T) is just
 % the final updated state from the Kalman Filter.
