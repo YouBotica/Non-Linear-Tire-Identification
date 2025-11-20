@@ -26,14 +26,12 @@ function [psi_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, const
     Fz_f_dyn = Fz_data(:, 1); % Column 1 is FzF
     Fz_r_dyn = Fz_data(:, 2); % Column 2 is FzR
 
-    % --- 6. Calculate Slip Angles ---
+    % --- 6. Calculate Slip Angles --- NB: 
     vx_safe = max(vx, 1.0); % Prevent division by zero
-    alpha_f = atan((vy + lf * r) ./ vx_safe) - delta;
-    alpha_r = atan((vy - lr * r) ./ vx_safe);
+    alpha_f = delta - atan((vy + lf * r) ./ vx_safe); 
+    alpha_r = 0 - atan((vy - lr * r) ./ vx_safe);
 
-    % --- 7. Calculate Tire Forces (Using the *Correct* Fz-dependent Formula) ---
-    % This now perfectly matches your 'simple_pacejka_lat.m'
-    
+    % --- 7. Calculate Tire Forces (Using the *Correct* Fz-dependent Formula) ---  
     % Front Tire
     F_peak_f = Df * Fz_f_dyn;
     x_f = Bf * alpha_f;

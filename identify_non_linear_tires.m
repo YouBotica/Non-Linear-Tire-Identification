@@ -14,10 +14,10 @@ logged_Ad      = out.Ad.Data;
 logged_u = out.u.Data;
 
 
-% 2. Run the RTS Smoother
-[x_smooth, r_smooth] = RTS_smoother(logged_x_t_t, logged_r_t_t, ...
-                                        logged_x_t_t_1, logged_r_t_t_1, ...
-                                        logged_Ad);
+% % 2. Run the RTS Smoother
+% [x_smooth, r_smooth] = RTS_smoother(logged_x_t_t, logged_r_t_t, ...
+%                                         logged_x_t_t_1, logged_r_t_t_1, ...
+%                                         logged_Ad);
 
 
 % 3. Extract the "Golden" Data
@@ -118,30 +118,30 @@ fprintf('Data has been smoothed and is ready for optimization.\n');
 fprintf('Step 1: Reconstructing ground truth target...\n');
 
 
-% Prep for identification (ie optimization)
-[N, ~] = size(x_smooth);
-y_target = zeros(N, 1);
-vx_smooth = x_smooth(:, 1);
-vy_smooth = x_smooth(:, 2);
-yaw_rate_smooth  = x_smooth(:, 3);
-xi_psi_smooth = x_smooth(:, 6);
-delta_log = logged_u(:,2); % Get the logged delta command
-Caf_log = out.Caf.Data; 
-Car_log = out.Car.Data; 
-m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
-
-for t = 1:N
-    vx_safe = max(vx_smooth(t), 1.0);
-    Caf_t = Caf_log(t);
-    Car_t = Car_log(t);
-    Nv = -(2*Caf_t*lf - 2*Car_t*lr) / (Izz * vx_safe);
-    Nr = -(2*Caf_t*lf^2 + 2*Car_t*lr^2) / (Izz * vx_safe);
-    B_lin_psi = (2*Caf_t*lf) / Izz;
-    psi_ddot_lin = (Nv * vy_smooth(t) + Nr * yaw_rate_smooth(t)) + (B_lin_psi * delta_log(t));
-    psi_ddot_disturbance = xi_psi_smooth(t) / Izz;
-    y_target(t) = psi_ddot_lin + psi_ddot_disturbance;
-end
-fprintf('Ground truth target reconstructed.\n');
+% % Prep for identification (ie optimization)
+% [N, ~] = size(x_smooth);
+% y_target = zeros(N, 1);
+% vx_smooth = x_smooth(:, 1);
+% vy_smooth = x_smooth(:, 2);
+% yaw_rate_smooth  = x_smooth(:, 3);
+% xi_psi_smooth = x_smooth(:, 6);
+% delta_log = logged_u(:,2); % Get the logged delta command
+% Caf_log = out.Caf.Data; 
+% Car_log = out.Car.Data; 
+% m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
+% 
+% for t = 1:N
+%     vx_safe = max(vx_smooth(t), 1.0);
+%     Caf_t = Caf_log(t);
+%     Car_t = Car_log(t);
+%     Nv = -(2*Caf_t*lf - 2*Car_t*lr) / (Izz * vx_safe);
+%     Nr = -(2*Caf_t*lf^2 + 2*Car_t*lr^2) / (Izz * vx_safe);
+%     B_lin_psi = (2*Caf_t*lf) / Izz;
+%     psi_ddot_lin = (Nv * vy_smooth(t) + Nr * yaw_rate_smooth(t)) + (B_lin_psi * delta_log(t));
+%     psi_ddot_disturbance = xi_psi_smooth(t) / Izz;
+%     y_target(t) = psi_ddot_lin + psi_ddot_disturbance;
+% end
+% fprintf('Ground truth target reconstructed.\n');
 
 % --- 2. Prepare Data for Optimizer ---
 states_smooth = x_smooth;
@@ -162,12 +162,13 @@ consts.h = 0.35;      % CG height (Make sure this matches your Simulink block!)
 % (We removed T_w as it's not in your sim's equations)
 
 % --- 4. Set up and Run Optimization ---
+% gt: B = 22; C = 1.8; D=1.6; E = 0.8;
 initial_guess = [20, 1.5, 1.5, 1.0, 20, 1.5, 1.5, 1.0];
-lb = [0, 0.2, 0, 0, 0, 0, 0, 0];
+lb = [1, 1, 1, 1, 1, 1, 1, 1];
 ub = [40, 2.5, 2.5, 2.0, 40, 2.5, 2.5, 2.0];
 
 % --- THIS IS THE FIX: Add 'Fz_data' to the function handle ---
-loss_handle = @(p) loss_function(p, states_smooth, inputs_log, Fz_data, consts, y_target);
+loss_handle = @(p) loss_function(p, states_smooth, inputs_log, Fz_data, consts, ddpsi_reconstructed);
 % --- END FIX ---
 
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
