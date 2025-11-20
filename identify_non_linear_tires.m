@@ -163,7 +163,7 @@ consts.h = 0.35;      % CG height (Make sure this matches your Simulink block!)
 
 % --- 4. Set up and Run Optimization ---
 % gt: B = 22; C = 1.8; D=1.6; E = 0.8;
-initial_guess = [20, 1.5, 1.5, 1.0, 20, 1.5, 1.5, 1.0];
+initial_guess = [10, 1.5, 1.5, 1.0, 10, 1, 1.5, 1.0];
 lb = [1, 1, 1, 1, 1, 1, 1, 1];
 ub = [40, 2.5, 2.5, 2.0, 40, 2.5, 2.5, 2.0];
 
@@ -171,8 +171,20 @@ ub = [40, 2.5, 2.5, 2.0, 40, 2.5, 2.5, 2.0];
 loss_handle = @(p) loss_function(p, states_smooth, inputs_log, Fz_data, consts, ddpsi_reconstructed);
 % --- END FIX ---
 
-options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
-                       'MaxIterations', 200, 'PlotFcn', {@optimplotfval, @optimplotstepsize});
+% options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
+%                        'MaxIterations', 200, 'PlotFcn', {@optimplotfval, @optimplotstepsize});
+
+options = optimoptions('fmincon', ...
+    'Algorithm', 'sqp', ...                % SQP works best for bound-constrained problems
+    'Display', 'iter', ...                 % See progress every step
+    'MaxIterations', 10, ...             % Don't stop too early
+    'MaxFunctionEvaluations', 10000, ...   % Allow enough exploration
+    ...
+    'FiniteDifferenceType', 'central', ... % CRITICAL: More accurate gradient estimation
+    'TypicalX', initial_guess, ...         % CRITICAL: Handles parameter scaling
+    'PlotFcn', {@optimplotfval, @optimplotx}); % Visualize the descent
+    % 'OptimalityTolerance', 1e-6, ...       % Ensure we are really at a minimum
+        % 'StepTolerance', 1e-8, ...             % Stop only when changes are tiny
 
 fprintf('Step 2: Starting "Vehicle Ident" optimization...\n');
 

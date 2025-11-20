@@ -32,7 +32,7 @@ Q_diag = [
     1e-6;  % r (Trust model)
     10000;  % xi_x (Disturbance can change a lot!)
     10000;  % xi_y (Disturbance can change a lot!)
-    1000; % xi_psi (Disturbance can change a lot!)
+    10000; % xi_psi (Disturbance can change a lot!)
 ];
 
 Q_curr = diag(Q_diag);
@@ -59,15 +59,15 @@ dt = 0.01;
 % We fix the top-left (physics states) to be small.
 % We learn the bottom-right (disturbance states).
 jitter = 1e-9;
-Q_curr = diag([jitter, jitter, jitter, 10000, 100, 100]);
+Q_curr = diag([jitter, jitter, jitter, 7154, 5067, 3486]);
 
 % R: Measurement Noise Covariance
 % Initial guess: variance = 0.01 (std dev = 0.1)
-R_curr = diag([0.01, 0.01, 0.01]);
+R_curr = diag([0.0098, 9.189e-6, 9.2797e-6]);
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 9; % 15-20 is usually enough for convergence
+MAX_ITER = 10; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);
