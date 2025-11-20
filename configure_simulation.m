@@ -2,12 +2,12 @@
 clear; clc; close all;
 
 % --- 2. Define Track Parameters ---
-longStraight = 1200;   % meters
+longStraight = 2500;   % meters
 shortStraight = 500;  % meters
 turnRadius = 250;      % meters
 pointsPerSegment = 500; % 100 points for each of the 8 segments
-v_straight = 20;
-v_turn = 10;
+v_straight = 40;
+v_turn = 25;
 
 % --- 3. Generate the Track ---
 fprintf('Generating roval track...\n');
