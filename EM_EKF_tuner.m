@@ -5,14 +5,14 @@ if ~exist('out', 'var')
 end
 
 % Vehicle Constants (Must match Simulink)
-consts.m = 780;
-consts.Izz = 1000;
-consts.lf = 1.4;
-consts.lr = 1.6;
-consts.Cd = 0.3;
+consts.m = veh_param.m;
+consts.Izz = veh_param.Izz;
+consts.lf = veh_param.lf;
+consts.lr = veh_param.lr;
+consts.Cd = veh_param.Cd;
 % Pacejka Linear Slope (B*C*D)
-consts.K_pacejka = 22 * 1.8 * 1.6; 
-dt = 0.01;
+consts.K_pacejka = veh_param.Bf * veh_param.Cf * veh_param.Df; 
+dt = control_param.T;
 
 
 % Run one pass with initial Q and R:
@@ -26,18 +26,11 @@ y_log = [out.measurements.Data(:,1), out.measurements.Data(:,2), out.measurement
 % u = [gp, delta]
 u_log = out.u.Data;
 
-Q_diag = [
-    1e-9;  % vx (Trust model)
-    1e-6;  % vy (Trust model)
-    1e-6;  % r (Trust model)
-    10000;  % xi_x (Disturbance can change a lot!)
-    10000;  % xi_y (Disturbance can change a lot!)
-    10000; % xi_psi (Disturbance can change a lot!)
-];
+Q_diag = control_param.ekf_Q_diag;
 
 Q_curr = diag(Q_diag);
 
-R_curr = diag([0.01; 0.01; 0.001]);
+R_curr = diag([control_param.ekf_vx_sensor_noise; control_param.ekf_vy_sensor_noise; control_param.ekf_dpsi_sensor_noise]);
 
 
 % Run one pass with your initial Q and R
@@ -52,7 +45,7 @@ R_curr = diag([0.01; 0.01; 0.001]);
 gt_ddpsi = out.gt_ddpsi.Data;
 
 [T_steps, ~] = size(y_log);
-dt = 0.01;
+% dt = 0.01;
 
 % --- 2. Initial Guess for Parameters ---
 % Q: Process Noise Covariance
@@ -67,7 +60,7 @@ R_curr = diag([0.0098, 9.189e-6, 9.2797e-6]);
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 10; % 15-20 is usually enough for convergence
+MAX_ITER = 20; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);
