@@ -79,42 +79,52 @@ fprintf('Plotting complete.\n');
 % Test estimated angular acceleration vs ground truth from Simulink's
 % Vehicle Dynamics Blockset:
 
-Caf = out.Caf.Data; Car = out.Car.Data; m = 780; Izz = 1000; lf = 1.4; lr = 1.6; 
+Caf = out.Caf.Data; Car = out.Car.Data; m = veh_param.m; Izz = veh_param.Izz; lf = veh_param.lf; lr = veh_param.lr; 
 [N, ~] = size(x_smooth); % To start for loop
 
 ddpsi_reconstructed = zeros(N,1);
+ddy_reconstructed = zeros(N,1);
 y_target_variance = zeros(N, 1); % Pre-allocate variance
 
 for t = 1:N
     % States & Inputs
-    vx_t = x_smooth(t, 1); vy_t = x_smooth(t, 2); r_t  = x_smooth(t, 3); xi_psi_t = x_smooth(t, 6);
+    vx_t = x_smooth(t, 1); vy_t = x_smooth(t, 2); r_t  = x_smooth(t, 3); xi_psi_t = x_smooth(t, 6); xi_y_t = x_smooth(t, 5);
     delta_t = logged_u(t, 2);
-    Caf_t = out.Caf.Data(t); Car_t = out.Caf.Data(t);
+    Caf_t = out.Caf.Data(t); Car_t = out.Car.Data(t);
     
     % Linear Model Terms
     vx_safe = max(vx_t, 1.0);
     Nv = -(2*Caf_t*lf - 2*Car_t*lr) / (Izz * vx_safe);
     Nr = -(2*Caf_t*lf^2 + 2*Car_t*lr^2) / (Izz * vx_safe);
+    Yv = -(2*Caf_t + 2*Car_t) / (m * vx_safe);
+    Yr = -vx - (2*Caf_t*lf - 2*Car_t*lr) / (m * vx_safe);
     B_lin_psi = (2*Caf_t*lf) / Izz;
     
     % A. Reconstruct Target (Mean)
+    ddy_lin = Yv * vy_t + Yr * r_t + (2*Caf_t * delta_t/m);
+    ddy_disturbance = xi_y_t / m;
+
     psi_ddot_lin = (Nv * vy_t + Nr * r_t) + (B_lin_psi * delta_t);
     psi_ddot_dist = xi_psi_t / Izz;
+    
+
+    ddy_reconstructed(t) = ddy_lin + ddy_disturbance;
+
     ddpsi_reconstructed(t) = psi_ddot_lin + psi_ddot_dist;
     
     % B. Reconstruct Variance (Uncertainty)
     % Var(y) = H * P * H'
     P_t = P_smooth(:, :, t);
-    H_t = [0, Nv, Nr, 0, 0, 1/Izz]; % Linear mapping vector
+    H_t = [0, Yv, (Yr + vx_t), 0, 1/m, 0];
     
     sigma2 = H_t * P_t * H_t';
     y_target_variance(t) = max(sigma2, 1e-9); % Floor
 end
 
 
-figure;
-plot(time_vector, ddpsi_reconstructed); hold on;
-plot(time_vector, out.gt_ddpsi.Data)
+figure; % Use either lateral acceleration (IMU?) or yaw accel (if available)
+plot(time_vector, ddy_reconstructed); hold on;
+plot(time_vector, out.gt_ay.Data)
 
 
 %% --- 4. Run the "Vehicle Ident" Optimization ---
@@ -132,24 +142,25 @@ Fz_data = [out.FzF.Data, out.FzR.Data]; % Creates an N x 2 matrix
 % --- END FIX ---
 
 % --- 3. Populate consts struct ---
-consts.lf = lf;
-consts.lr = lr;
-consts.Izz = Izz;
-consts.m = m;
-consts.g = 9.81;      % Gravitational acceleration
-consts.h = 0.35;      % CG height (Make sure this matches your Simulink block!)
+consts.lf = veh_param.lf;
+consts.lr = veh_param.lr;
+consts.Izz = veh_param.Izz;
+consts.m = veh_param.m;
+consts.g =veh_param.g;      % Gravitational acceleration
+consts.h = veh_param.h;      % CG height (Make sure this matches your Simulink block!)
 % (We removed T_w as it's not in your sim's equations)
 
 % --- 4. Set up and Run Optimization ---
 % [Bf, Cf, Df, Ef, Br, Cr, Dr, Er, P1, P2, P3]
-initial_guess = [10, 1.5, 1.5, 1.0, 1, 2.0, 0.9, 1.0, 0, 0, 0];
+initial_guess = [20, 1.5, 1.5, 1.0, 10, 2.0, 0.9, 1.0, 0, 0, 0];
 
 % Bounds (Pacejka > 0, Residuals unbounded)
-lb = [1, 0.5, 0.1, 0.2, 1, 0.5, 0.1, 0.2, -100, -100, -100];
-ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0,  100, 100, 100];
+lb = [1, 0.5, 0.1, 0.2, 1, 0.5, 0.1, 0.2, 0, 0, 0];
+ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0,  0, 0, 0];
 
 % Create Function Handle (Passes all data + variance + initial_guess)
-loss_handle = @(p) loss_function_weighted(p, states_smooth, inputs_log, Fz_data, consts, ddpsi_reconstructed, y_target_variance, initial_guess);
+% loss_handle = @(p) loss_function(p, states_smooth, inputs_log, Fz_data, consts, ddy_reconstructed);
+loss_handle = @(p) loss_function_weighted(p, states_smooth, inputs_log, Fz_data, consts, ddy_reconstructed, y_target_variance, initial_guess);
 
 % --- 5. Run MultiStart ---
 fprintf('Step 3: Running MultiStart...\n');

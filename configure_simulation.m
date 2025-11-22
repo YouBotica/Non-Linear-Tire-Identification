@@ -7,22 +7,23 @@ control_param.vx_noise_pwr = 0.0001;
 control_param.vy_noise_pwr = 0.0000001;
 control_param.dpsi_noise_pwr = 0.0000001; 
 
-control_param.ekf_vx_sensor_noise = 0.0098; 
-control_param.ekf_vy_sensor_noise = 9.189e-6;
-control_param.ekf_dpsi_sensor_noise = 9.189e-6;
-control_param.ekf_initial_cov = eye(6)*0; % Start with zero?
-control_param.deccel_threshold = 5;
+control_param.ekf_vx_sensor_noise = 1e-6; 
+control_param.ekf_vy_sensor_noise = 1e-5;
+control_param.ekf_dpsi_sensor_noise = 1e-7;
+control_param.ekf_ay_sensor_noise = 1e-6;
+control_param.ekf_initial_cov = [diag([1e-5; 1e-3; 1e-3; 100; 100; 100])]; % Start with zero?
+control_param.deccel_threshold = 1;
 control_param.K1_vx = 4;
 control_param.K1_dpsi = 30; 
 
 
 control_param.ekf_Q_diag = [
-    1e-6;  % vx (Trust model)
-    1e-6;  % vy (Trust model)
-    1e-6;  % r (Trust model)
-    7154;  % xi_x (Disturbance can change a lot!)
-    5067;  % xi_y (Disturbance can change a lot!)
-    3486; % xi_psi (Disturbance can change a lot!)
+    1e-2;  % vx (Trust model)
+    1e-2;  % vy (Trust model)
+    1e-2;  % r (Trust model)
+    10;  % xi_x (Disturbance can change a lot!)
+    100;  % xi_y (Disturbance can change a lot!)
+    100; % xi_psi (Disturbance can change a lot!)
 ];
 
 
@@ -31,10 +32,11 @@ veh_param.Caf = 63; % Approximated cornering stiffness of the front tire
 veh_param.Car = 63; % Approximated cornering stiffness of the rear tire
 veh_param.lf = 1.4; % Distance from CG to front axle
 veh_param.lr = 1.6; % Distance from CG to rear axle
-veh_param.m = 780; % Vehicle's mass (780 g)
+veh_param.m = 780; % Vehicle's mass (780 kg)
 veh_param.Izz = 1000; % Vehicle z (vertical) moment of inertia kg*m^2
 veh_param.Cd = 0.3; % Vehicle Aero Coefficient
 veh_param.g = 9.81;
+veh_param.h = 0.35;
 veh_param.initial_states = [5; 0; 0; 0; 0; 0]; % vx, control_param.dpsi_noise_pwrvy, dpsi, disturbance_x, disturbance_y, disturbance_dpsi
 
 % Front and rear tires Magic Formula:

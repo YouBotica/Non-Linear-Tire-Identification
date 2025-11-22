@@ -24,7 +24,7 @@ function [loss] = loss_function_weighted(params, states_smooth, inputs_log, Fz_d
     % --- 4. (NEW) Calculate Similarity Loss (Front vs Rear) ---
     % "Front tires should behave similarly to Rear tires"
     
-    lambda_sim = 1.0; % <-- TUNING KNOB: Higher = Force them closer together
+    lambda_sim = 100.0; % <-- TUNING KNOB: Higher = Force them closer together
     
     % Extract Pacejka params
     p_front = params(1:4); % [Bf, Cf, Df, Ef]
