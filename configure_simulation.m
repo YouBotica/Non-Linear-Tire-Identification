@@ -9,9 +9,9 @@ control_param.dpsi_noise_pwr = 0.0000001;
 
 control_param.ekf_vx_sensor_noise = 1e-6; 
 control_param.ekf_vy_sensor_noise = 1e-5;
-control_param.ekf_dpsi_sensor_noise = 1e-7;
+control_param.ekf_dpsi_sensor_noise = 1e-6;
 control_param.ekf_ay_sensor_noise = 1e-6;
-control_param.ekf_initial_cov = [diag([1e-5; 1e-3; 1e-3; 100; 100; 100])]; % Start with zero?
+control_param.ekf_initial_cov = [diag([1e-5; 1e-3; 1e-3; 100; 100; 100]*0)]; % Start with zero?
 control_param.deccel_threshold = 1;
 control_param.K1_vx = 4;
 control_param.K1_dpsi = 30; 
@@ -20,7 +20,7 @@ control_param.K1_dpsi = 30;
 control_param.ekf_Q_diag = [
     1e-2;  % vx (Trust model)
     1e-2;  % vy (Trust model)
-    1e-2;  % r (Trust model)
+    1e-7;  % r (Trust model)
     10;  % xi_x (Disturbance can change a lot!)
     100;  % xi_y (Disturbance can change a lot!)
     100; % xi_psi (Disturbance can change a lot!)

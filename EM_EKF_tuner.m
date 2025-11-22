@@ -45,8 +45,9 @@ P_initial = control_param.ekf_initial_cov;
 
 % Ground Truth for Validation (Yaw Accel)
 gt_ddpsi = out.gt_ddpsi.Data;
+gt_ddy = out.gt_ay.Data;
 
-
+%%
 [T_steps, ~] = size(y_log);
 
 % --- 2. Initial Guess for Parameters ---
@@ -57,7 +58,7 @@ jitter = 1e-6;
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 4; % 15-20 is usually enough for convergence
+MAX_ITER = 60; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);
@@ -146,14 +147,14 @@ for iter = 1:MAX_ITER
     
     % 2. Lock Physics States (Top-Left Block)
     % We trust our physics model for vx, vy, r.
-    Q_new(1,1) = jitter;
-    Q_new(2,2) = jitter;
-    Q_new(3,3) = jitter;
+    Q_new(1,1) = control_param.ekf_Q_diag(1);
+    Q_new(2,2) = control_param.ekf_Q_diag(2);
+    Q_new(3,3) = control_param.ekf_Q_diag(3);
     
     % 3. Safety Floor
     % to prevent singularity in the next iteration.
-    SAFE_FLOOR_Q = 1e-6; 
-    SAFE_FLOOR_R = 1e-5;
+    SAFE_FLOOR_Q = 1e-9; 
+    SAFE_FLOOR_R = 1e-9;
     
     Q_new = max(Q_new, eye(6) * SAFE_FLOOR_Q);
     R_new = max(R_new, eye(4) * SAFE_FLOOR_R);
@@ -163,27 +164,48 @@ for iter = 1:MAX_ITER
     % R_curr = R_new; % Dont update R?
     
     % --- Validation Metric (RMSE of Yaw Accel Reconstruction) ---
-    ddpsi_recon = zeros(T_steps, 1);
+    ddy_recon = zeros(T_steps, 1);
+    
     for t = 1:T_steps
+        % Unpack Smoothed States
         vx = max(x_smooth(t,1), 1.0);
         vy = x_smooth(t,2);
         r  = x_smooth(t,3);
-        xi_psi = x_smooth(t,6);
-        delta = u_log(t,2);
-        FzF = y_log(t,4); FzR = y_log(t,5);
+        xi_y = x_smooth(t,5);
         
-        % Recalculate dynamic stiffness
+        % Unpack Inputs/Params
+        delta = u_log(t,2);
+        FzF = y_log(t,5); FzR = y_log(t,6); % Ensure indices match y_log structure
+        
+        % Recalculate dynamic stiffness (Total Axle Stiffness)
         Caf = consts.K_pacejka * FzF;
         Car = consts.K_pacejka * FzR;
         
-        Nv = -(2*Caf*consts.lf - 2*Car*consts.lr) / (consts.Izz * vx);
-        Nr = -(2*Caf*consts.lf^2 + 2*Car*consts.lr^2) / (consts.Izz * vx);
-        B_lin = (2*Caf*consts.lf) / consts.Izz;
+        % --- 1. Linear Model (Body Frame dvy/dt) ---
+        % Note: NO '2*' multiplier here!
+        Yv = -(Caf + Car) / (consts.m * vx);
+        Yr = -vx - (Caf*consts.lf - Car*consts.lr) / (consts.m * vx);
+        B_lat = Caf / consts.m; 
         
-        ddpsi_recon(t) = (Nv*vy + Nr*r + B_lin*delta) + (xi_psi / consts.Izz);
+        ay_linear_body = Yv*vy + Yr*r; % + B_lat*control_param.T*delta;
+        
+        % --- 2. Disturbance (Body Frame) ---
+        ay_dist_body = xi_y / consts.m;
+        
+        % --- 3. Total Body Acceleration ---
+        dvy_dt = ay_linear_body + ay_dist_body;
+        
+        % --- 4. Convert to IMU Acceleration (Inertial) ---
+        % The IMU measures dvy/dt + vx*r (Centripetal term)
+        % Note: Since Yr contains '-vx', adding '+vx*r' cancels it out,
+        % leaving just the forces. This is what we want.
+        ddy_recon(t) = dvy_dt + (vx * r);
     end
     
-    rmse = sqrt(mean((gt_ddpsi - ddpsi_recon).^2));
+    % Calc RMSE against Ground Truth ay
+    % (Make sure y_log(:,4) is actually ay in your log!)
+    gt_ay = y_log(:, 4); 
+    rmse = sqrt(mean((gt_ay - ddy_recon).^2));
     fprintf(' RMSE: %.4f\n', rmse);
     
 end
@@ -196,8 +218,8 @@ disp(diag(R_curr));
 
 % --- Plot Final Validation ---
 figure;
-plot(gt_ddpsi, 'r', 'LineWidth', 1.5); hold on;
-plot(ddpsi_recon, 'b--', 'LineWidth', 1.5);
+plot(gt_ddy, 'r', 'LineWidth', 1.5); hold on;
+plot(ddy_recon, 'b--', 'LineWidth', 1.5);
 legend('Ground Truth', 'EM Reconstructed');
 title('Validation: Reconstructed Yaw Acceleration after EM');
 grid on;
@@ -213,10 +235,10 @@ function [Ad, Bd, Yv, Yr] = get_linear_model(x, Fz, c, dt)
     Caf = c.K_pacejka * FzF;
     Car = c.K_pacejka * FzR;
     
-    Yv = -(2*Caf + 2*Car) / (c.m * vx);
-    Yr = -vx - (2*Caf*c.lf - 2*Car*c.lr) / (c.m * vx);
-    Nv = -(2*Caf*c.lf - 2*Car*c.lr) / (c.Izz * vx);
-    Nr = -(2*Caf*c.lf^2 + 2*Car*c.lr^2) / (c.Izz * vx);
+    Yv = -(Caf + Car) / (c.m * vx);
+    Yr = -vx - (Caf*c.lf - Car*c.lr) / (c.m * vx);
+    Nv = -(Caf*c.lf - Car*c.lr) / (c.Izz * vx);
+    Nr = -(Caf*c.lf^2 + Car*c.lr^2) / (c.Izz * vx);
 
     % disp('Yr');
     % disp(Yr);
@@ -229,8 +251,8 @@ function [Ad, Bd, Yv, Yr] = get_linear_model(x, Fz, c, dt)
           0, 0, 0, 0, 0, 0 ];
       
     B = [ 1/c.m, 0;
-          0, 2*Caf/c.m;
-          0, 2*Caf*c.lf/c.Izz;
+          0, Caf/c.m;
+          0, Caf*c.lf/c.Izz;
           0, 0; 0, 0; 0, 0 ];
       
     Ad = eye(6) + A*dt;

@@ -55,16 +55,16 @@ function [Ad, Bd, Yv, Yr] = get_linear_model_internal(x, u, Fz, c, dt)
     FzF = Fz(1); FzR = Fz(2);
     Caf = c.K_pacejka * FzF; Car = c.K_pacejka * FzR;
     
-    Yv = -(2*Caf + 2*Car) / (c.m * vx);
-    Yr = -vx - (2*Caf*c.lf - 2*Car*c.lr) / (c.m * vx);
-    Nv = -(2*Caf*c.lf - 2*Car*c.lr) / (c.Izz * vx);
-    Nr = -(2*Caf*c.lf^2 + 2*Car*c.lr^2) / (c.Izz * vx);
+    Yv = -(Caf + Car) / (c.m * vx);
+    Yr = -vx - (Caf*c.lf - Car*c.lr) / (c.m * vx);
+    Nv = -(Caf*c.lf - Car*c.lr) / (c.Izz * vx);
+    Nr = -(Caf*c.lf^2 + Car*c.lr^2) / (c.Izz * vx);
     
     A = [ -c.Cd/c.m, 0, 0, 1/c.m, 0, 0;
           0, Yv, Yr, 0, 1/c.m, 0;
           0, Nv, Nr, 0, 0, 1/c.Izz;
           zeros(3, 6) ];
-    B = [ 1/c.m, 0; 0, 2*Caf/c.m; 0, 2*Caf*c.lf/c.Izz; zeros(3, 2) ];
+    B = [ 1/c.m, 0; 0, Caf/c.m; 0, Caf*c.lf/c.Izz; zeros(3, 2) ];
     
     % Discretize:
     Ad = eye(6) + A*dt;

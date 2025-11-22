@@ -46,6 +46,9 @@ function [y_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, consts)
     
     % --- 8. Calculate Final Non-Linear Yaw Acceleration ---
     % 
-    y_ddot_nl = -vx.*r + (Fyf + Fyr) ./ m;
+    y_ddot_nl = (Fyf + Fyr) ./ m;
+    % y_ddot_nl = (Fyf + Fyr) ./ m;
     psi_ddot_nl = (lf .* Fyf - lr .* Fyr) ./ Izz;
 end
+
+
