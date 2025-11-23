@@ -42,7 +42,6 @@ P_initial = control_param.ekf_initial_cov;
 % Run smoother on baseline
 [x_human_smooth, ~, ~] = RTS_smoother_EM(x_human_filt, P_human_filt, x_human_pred, P_human_pred, Ad_log);
 
-
 % Ground Truth for Validation (Yaw Accel)
 gt_ddpsi = out.gt_ddpsi.Data;
 gt_ddy = out.gt_ay.Data;
@@ -58,7 +57,7 @@ jitter = 1e-6;
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 60; % 15-20 is usually enough for convergence
+MAX_ITER = 12; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);
@@ -163,7 +162,7 @@ for iter = 1:MAX_ITER
     Q_curr = Q_new;
     % R_curr = R_new; % Dont update R?
     
-    % --- Validation Metric (RMSE of Yaw Accel Reconstruction) ---
+    % --- Validation Metric (RMSE of Lateral Accel Reconstruction) ---
     ddy_recon = zeros(T_steps, 1);
     
     for t = 1:T_steps
