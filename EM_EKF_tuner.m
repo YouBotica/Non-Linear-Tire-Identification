@@ -57,7 +57,7 @@ jitter = 1e-6;
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 12; % 15-20 is usually enough for convergence
+MAX_ITER = 100; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);
@@ -69,8 +69,9 @@ for iter = 1:MAX_ITER
     
     % 1. Run Forward EKF (MATLAB implementation)
     % fprintf(' Pre KF ');
-    [x_filt, P_filt, x_pred, P_pred, Ad_log] = forward_KF_EM(y_log, u_log, Q_curr, R_curr, control_param.ekf_initial_cov, consts, dt);
+    [x_filt, P_filt, x_pred, P_pred, Ad_log, log_likelihood] = forward_KF_EM(y_log, u_log, Q_curr, R_curr, control_param.ekf_initial_cov, consts, dt);
     % fprintf(' Post KF ');
+    fprintf('    Log-Likelihood: %.4f\n', log_likelihood);
 
 
     % 2. Run RTS Smoother (with Lag-One Covariance)
@@ -160,7 +161,7 @@ for iter = 1:MAX_ITER
     
     % --- Update Parameters ---
     Q_curr = Q_new;
-    % R_curr = R_new; % Dont update R?
+    R_curr = R_new; % Dont update R?
     
     % --- Validation Metric (RMSE of Lateral Accel Reconstruction) ---
     ddy_recon = zeros(T_steps, 1);

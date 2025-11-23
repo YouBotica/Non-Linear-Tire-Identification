@@ -1,4 +1,4 @@
-function [x_hist, P_hist, x_pred_hist, P_pred_hist, Ad_hist] = forward_KF_EM(y, u, Q, R, P_initial, c, dt)
+function [x_hist, P_hist, x_pred_hist, P_pred_hist, Ad_hist, log_likelihood] = forward_KF_EM(y, u, Q, R, P_initial, c, dt)
     [N, ~] = size(y);
     num_states = 6;
     
@@ -13,6 +13,7 @@ function [x_hist, P_hist, x_pred_hist, P_pred_hist, Ad_hist] = forward_KF_EM(y, 
     x_pred_hist = zeros(N, num_states);
     P_pred_hist = zeros(num_states, num_states, N);
     Ad_hist = zeros(num_states, num_states, N);
+    log_likelihood = 0;
     
     for k = 1:N
         % Get inputs for this step
@@ -35,10 +36,15 @@ function [x_hist, P_hist, x_pred_hist, P_pred_hist, Ad_hist] = forward_KF_EM(y, 
         
         % --- Update ---
         % Joseph form for stability
-        K = P_pred * C_aug' / (C_aug * P_pred * C_aug' + R);
-        x = x_pred + K * (yk - C_aug * x_pred);
+        innov = yk - C_aug * x_pred;
+        innov_cov = C_aug * P_pred * C_aug' + R;
+        K = P_pred * C_aug' / innov_cov;
+        x = x_pred + K * innov;
         I = eye(num_states);
         P = (I - K * C_aug) * P_pred * (I - K * C_aug)' + K * R * K';
+
+        % Accumulate Log-Likelihood
+        log_likelihood = log_likelihood - 0.5 * (innov' * (innov_cov \ innov) + log(det(innov_cov)) + 4*log(2*pi));
         
         % --- Store ---
         x_hist(k, :) = x';

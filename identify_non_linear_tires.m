@@ -65,9 +65,9 @@ consts.h = veh_param.h;
 dt = control_param.T;
 
 % --- 1. Define Initial Guess & Bounds ---
-initial_guess = [15, 1.5, 1.5, 1.0, 15, 1.5, 1.5, 1.0, 0, 0, 0];
-lb = [1, 0.5, 0.1, 0.2, 1, 0.5, 0.1, 0.2, 0, 0, 0];
-ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0, 0, 0, 0];
+initial_guess = [1.5, 1.5, 1.5, 1.0, 7, 1.5, 1.5, 1.0, 0, 0, 0];
+lb = [1, 0.5, 0.1, 0.2, 1, 0.5, 0.1, 0.2, -10, -10, -10];
+ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0, 10, 10, 10];
 
 states_smooth = x_smooth;
 Fz_data = [out.FzF.Data, out.FzR.Data];
@@ -83,7 +83,7 @@ fprintf('Optimizing against Ground Truth ay...\n');
 loss_handle = @(p) loss_function_weighted(p, states_smooth, logged_u, Fz_data, consts, ddy_reconstructed, y_target_variance, initial_guess);
 
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
-                       'MaxIterations', 500, 'MaxFunctionEvaluations', 10e3);
+                       'MaxIterations', 1500, 'MaxFunctionEvaluations', 10e3);
 
 [theta_test, loss_test] = fmincon(loss_handle, initial_guess, [], [], [], [], lb, ub, [], options);
 
@@ -91,7 +91,7 @@ options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
 disp('--- UNIT TEST RESULTS ---');
 disp('Ground Truth: [22, 1.8, 1.6, 0.8]');
 disp('Identified:');
-disp(theta_test(1:8));
+disp(theta_test(1:11));
 
 % 6a. Calculate Final Prediction (Identified Model)
 y_pred_final = predict_NL_accel(theta_test, states_smooth, logged_u, Fz_data, consts);
