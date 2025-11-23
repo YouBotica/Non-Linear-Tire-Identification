@@ -1,5 +1,5 @@
 % Save this as 'predict_NL_accel.m'
-function [psi_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, consts)
+function [y_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, consts)
     % This is the "Physics Whiz" model.
     % It now uses the Fz-dependent Pacejka formula to match the sim.
 
@@ -11,14 +11,16 @@ function [psi_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, const
     lf = consts.lf;
     lr = consts.lr;
     Izz = consts.Izz;
+    m = consts.m;
     
     % --- 3. Unpack States (from smoothed data) ---
     % x_hat = [vx, vy, r, xi_x, xi_y, xi_psi]'
     vx = states(:, 1);
     vy = states(:, 2);
     r  = states(:, 3);
+
     
-    % --- 4. Unpack Inputs ---
+    % --- 4. Unpack Inputs ---s
     delta = inputs(:, 2); % Assuming inputs_log = [gp, delta]
 
     % --- 5. Get Vertical Loads (Fz) ---
@@ -28,20 +30,25 @@ function [psi_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, const
 
     % --- 6. Calculate Slip Angles --- NB: 
     vx_safe = max(vx, 1.0); % Prevent division by zero
-    alpha_f = delta - atan((vy + lf * r) ./ vx_safe); 
-    alpha_r = 0 - atan((vy - lr * r) ./ vx_safe);
+    alpha_f = atan((vy + lf * r) ./ vx_safe) - delta; 
+    alpha_r = atan((vy - lr * r) ./ vx_safe) - 0;
 
     % --- 7. Calculate Tire Forces (Using the *Correct* Fz-dependent Formula) ---  
     % Front Tire
     F_peak_f = Df * Fz_f_dyn;
     x_f = Bf * alpha_f;
-    Fyf = F_peak_f .* sin(Cf * atan(x_f - Ef * (x_f - atan(x_f))));
+    Fyf = -F_peak_f .* sin(Cf * atan(x_f - Ef * (x_f - atan(x_f))));
     
     % Rear Tire
     F_peak_r = Dr * Fz_r_dyn;
     x_r = Br * alpha_r;
-    Fyr = F_peak_r .* sin(Cr * atan(x_r - Er * (x_r - atan(x_r))));
+    Fyr = -F_peak_r .* sin(Cr * atan(x_r - Er * (x_r - atan(x_r))));
     
     % --- 8. Calculate Final Non-Linear Yaw Acceleration ---
+    % 
+    y_ddot_nl = (Fyf + Fyr) ./ m;
+    % y_ddot_nl = (Fyf + Fyr) ./ m;
     psi_ddot_nl = (lf .* Fyf - lr .* Fyr) ./ Izz;
 end
+
+
