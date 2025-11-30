@@ -7,23 +7,25 @@ control_param.vx_noise_pwr = 0.0001;
 control_param.vy_noise_pwr = 0.0000001;
 control_param.dpsi_noise_pwr = 0.0000001; 
 
-control_param.ekf_vx_sensor_noise = 1e-6; 
-control_param.ekf_vy_sensor_noise = 1e-5;
-control_param.ekf_dpsi_sensor_noise = 1e-6;
-control_param.ekf_ay_sensor_noise = 1e-6;
+control_param.ekf_vx_sensor_noise = 0.0093; 
+control_param.ekf_vy_sensor_noise = 5.8534e-5;
+control_param.ekf_dpsi_sensor_noise = 6.1532e-6;
+control_param.ekf_ay_sensor_noise = 0.0026;
 control_param.ekf_initial_cov = [diag([1e-5; 1e-3; 1e-3; 100; 100; 100]*0)]; % Start with zero?
 control_param.deccel_threshold = 1;
 control_param.K1_vx = 4;
 control_param.K1_dpsi = 30; 
 
+control_param.lookahead_distance = 0.6;
+
 
 control_param.ekf_Q_diag = [
-    1e-2;  % vx (Trust model)
-    1e-2;  % vy (Trust model)
-    1e-7;  % r (Trust model)
-    10;  % xi_x (Disturbance can change a lot!)
-    100;  % xi_y (Disturbance can change a lot!)
-    100; % xi_psi (Disturbance can change a lot!)
+    4.9439e-4;  % vx (Trust model)
+    5.8044e-4;  % vy (Trust model)
+    5.55501e-6;  % r (Trust model)
+    17.535;  % xi_x (Disturbance can change a lot!)
+    1.3216e3;  % xi_y (Disturbance can change a lot!)
+    28.569; % xi_psi (Disturbance can change a lot!)
 ];
 
 
@@ -50,12 +52,6 @@ veh_param.Bf = 22;
 veh_param.Cf = 1.8;
 veh_param.Df = 1.6;
 veh_param.Ef = 0.8;
-
-
-
-
-%%
-
 
 
 % --- 2. Define Track Parameters ---
