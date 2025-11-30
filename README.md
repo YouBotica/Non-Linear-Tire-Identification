@@ -206,8 +206,14 @@ Then, this yaw rate control structure is used to close and outside cascade contr
 Heading controller (cascaded with the yaw rate ADRC):
 ![Model Diagram](Images/heading_adrc_ident_exp.png)
 
-Speed controller:
+**The following plot shows the Speed Controller Tracking:**
 ![Model Diagram](Images/speed_adrc_ident_exp.png)
+
+
+**The following plot shows the yaw rate tracking (internal loop) and the estimate by the EKF**
+![Model Diagram](Images/EKF_yaw_rate_comparison.svg)
+
+**The following plot shows the **
 
 
 ## 1.4 Extended State Kalman Filter Observer (EKF)
@@ -236,6 +242,9 @@ Where $P$ is the covariance, $K_t$ is the Kalman Gain.
 
 ![Model Diagram](Images/accel_vs_reconstructed.png)
 
+**The following plot shows the Steering Angle (rad) signal for the identification experiment**
+
+![Model Diagram](Images/steering_angle_control.svg)
 
 ---
 
@@ -301,7 +310,7 @@ The goal of the **E-Step** is to compute the expected value of the complete data
 
 Since $X$ is unknown, we compute the expected value of the sufficient statistics of $X$ (conditioned on all observations $Y_{1:T}$ and current parameters (of the recognition model).
 
-#### Required Sufficient Statistics (from Kalman Smoother)
+#### Required Sufficient Statistics (from RTS Smoother)
 1.  **Smoothed State Mean:**
     $$\hat{X}_{t|T} = \mathbb{E}[X_t | Y_{1:T}]$$
 2.  **Smoothed State Covariance:**
@@ -309,7 +318,7 @@ Since $X$ is unknown, we compute the expected value of the sufficient statistics
 3.  **Lag-one Cross-Covariance:**
     $$P_{t, t-1|T} = \text{cov}(X_t, X_{t-1} | Y_{1:T})$$
 
-#### Algorithm 1: RTS Smoother (Backwards Pass)
+#### Algorithm: RTS Smoother (Backwards Pass)
 
 * **Smoother Gain:** $J_t = P_{t|t} A^T P_{t-1|t-1}^{-1}$
 * **Smoothed State:** $\hat{X}_{t-1|T} = \hat{X}_{t-1|t-1} + J_t (\hat{X}_{t|T} - \hat{X}_{t|t-1})$
@@ -339,6 +348,12 @@ $$
 \mathcal{Q}_{\text{new}} \propto - \frac{1}{2} \sum_{t=1}^{T} \left[ \Sigma_t + A P_{t-1|T} A^T + P_{t|T} - P_{t, t-1|T} A^T - A P_{t, t-1|T}^T \right]
 $$
 Where $\Sigma_t = (\hat{X}_{t|T} - \hat{X}_{t|t-1}) (\hat{X}_{t|T} - \hat{X}_{t|t-1})^T$.
+
+
+**After running the EM auto-tuner for the EKF and Smoother, we get the following results:**
+
+![Model Diagram](Images/human_vs_EM_tuned.png)
+
 
 
 
@@ -427,4 +442,9 @@ Ground Truth: [22, 1.8, 1.6, 0.8]
 Identified:
    17.3461    1.2192    2.6417    0.7022   24.4151    1.7344    1.7046    1.4463         0         0         0
 
-   
+As seen above, it was decided to turn off the residuals $P_1$, $P_2$ and $P_3$
+
+
+**Training Data: Identified NL Model vs Ground truth**
+
+![Model Diagram](Images/identification_training_result.svg)
