@@ -64,23 +64,39 @@ consts.g = veh_param.g;
 consts.h = veh_param.h;
 dt = control_param.T;
 
+
+
+
 % --- 1. Define Initial Guess & Bounds ---
-initial_guess = [1.5, 1.5, 1.5, 1.0, 7, 1.5, 1.5, 1.0, 0, 0, 0];
-lb = [1, 0.5, 0.1, 0.2, 1, 0.5, 0.1, 0.2, -10, -10, -10];
-ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0, 10, 10, 10];
+% initial_guess = [15, 1.5, 1.5, 1.0, 15, 1.5, 1.5, 1.0, 0, 0, 0];
+initial_guess = [30, 1, 1, 1, 30, 1, 1, 1, 0, 0, 0];
+lb = [1, 0.5, 0.1, 0.7, 1, 0.5, 0.1, 0.7, 0, 0, 0];
+ub = [40, 3.0, 3.0, 2.0, 40, 3.0, 3.0, 2.0, 0, 0, 0];
 
 states_smooth = x_smooth;
 Fz_data = [out.FzF.Data, out.FzR.Data];
 
+% Slice data:
+Fz_data_sliced = Fz_data(1:5000);
+logged_u_sliced = logged_u(1:5000);
+states_smooth_sliced = states_smooth(1:5000);
+ddy_reconstructed_sliced = ddy_reconstructed(1:5000);
+y_target_variance_sliced = y_target_variance(1:5000);
+
 % --- 4. PRE-OPTIMIZATION CHECK ---
 fprintf('Calculating response with Initial Guess...\n');
+% y_pred_initial = predict_NL_accel(initial_guess, states_smooth_sliced, logged_u_sliced, Fz_data_sliced, consts);
 y_pred_initial = predict_NL_accel(initial_guess, states_smooth, logged_u, Fz_data, consts);
 
 % --- 5. Run Optimization ---
 fprintf('Optimizing against Ground Truth ay...\n');
 
 % loss function signature: loss_function_weighted(params, states_smooth, inputs_log, Fz_data, consts, y_target, y_target_variance, initial_guess)
-loss_handle = @(p) loss_function_weighted(p, states_smooth, logged_u, Fz_data, consts, ddy_reconstructed, y_target_variance, initial_guess);
+% loss_handle = @(p) loss_function_weighted(p, states_smooth_sliced, logged_u_sliced, Fz_data_sliced, consts, ... % Use sliced version
+    % ddy_reconstructed_sliced, y_target_variance_sliced, initial_guess);
+
+% loss_handle = @(p) loss_function_weighted(p, states_smooth, logged_u, Fz_data, consts, ddy_reconstructed, y_target_variance, initial_guess);
+loss_handle = @(p) loss_function(p, states_smooth, logged_u, Fz_data, consts, ddy_reconstructed);
 
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'MaxIterations', 1500, 'MaxFunctionEvaluations', 10e3);
@@ -113,4 +129,7 @@ plot(y_pred_true_params, 'c:', 'LineWidth', 1.5);          % Ideal (True Params)
 legend('Meas. Ground Truth (ay)', 'Initial Guess', 'Identified Model', 'True Model Prediction');
 title('Unit Test Result: Optimization Progress');
 grid on;
+
+figure('Name', 'Final Parameters Estimated')
+
 

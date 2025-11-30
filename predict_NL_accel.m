@@ -6,6 +6,9 @@ function [y_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, consts)
     % --- 1. Unpack Parameters (theta) ---
     Bf = params(1); Cf = params(2); Df = params(3); Ef = params(4);
     Br = params(5); Cr = params(6); Dr = params(7); Er = params(8);
+
+    % Unpack Residual Parameters (The "Black Box")
+    P1 = params(9); P2 = params(10); P3 = params(11);
     
     % --- 2. Unpack Constants ---
     lf = consts.lf;
@@ -43,10 +46,15 @@ function [y_ddot_nl] = predict_NL_accel(params, states, inputs, Fz_data, consts)
     F_peak_r = Dr * Fz_r_dyn;
     x_r = Br * alpha_r;
     Fyr = -F_peak_r .* sin(Cr * atan(x_r - Er * (x_r - atan(x_r))));
+
+    % --- 8. Calculate Residual Acceleration ---
+    % This absorbs unmodeled physics (aero drag, linear errors, etc.)
+    ay_residual = (P1 * vx.^2) + (P2 * vy) + (P3 * r);
+
     
-    % --- 8. Calculate Final Non-Linear Yaw Acceleration ---
+    % --- 9. Calculate Final Non-Linear Yaw Acceleration ---
     % 
-    y_ddot_nl = (Fyf + Fyr) ./ m;
+    y_ddot_nl = ((Fyf + Fyr) ./ m) + ay_residual;
     % y_ddot_nl = (Fyf + Fyr) ./ m;
     psi_ddot_nl = (lf .* Fyf - lr .* Fyr) ./ Izz;
 end

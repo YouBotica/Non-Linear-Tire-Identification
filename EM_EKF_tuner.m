@@ -145,11 +145,11 @@ for iter = 1:MAX_ITER
     Q_new = diag(diag(Q_calculated));
     R_new = diag(diag(R_calculated));
     
-    % 2. Lock Physics States (Top-Left Block)
+    % 2. Lock Physics States (Top-Left Block)?? NOTE: Maybe not
     % We trust our physics model for vx, vy, r.
-    Q_new(1,1) = control_param.ekf_Q_diag(1);
-    Q_new(2,2) = control_param.ekf_Q_diag(2);
-    Q_new(3,3) = control_param.ekf_Q_diag(3);
+    % Q_new(1,1) = control_param.ekf_Q_diag(1);
+    % Q_new(2,2) = control_param.ekf_Q_diag(2);
+    % Q_new(3,3) = control_param.ekf_Q_diag(3);
     
     % 3. Safety Floor
     % to prevent singularity in the next iteration.
@@ -161,7 +161,7 @@ for iter = 1:MAX_ITER
     
     % --- Update Parameters ---
     Q_curr = Q_new;
-    R_curr = R_new; % Dont update R?
+    R_curr = R_new; 
     
     % --- Validation Metric (RMSE of Lateral Accel Reconstruction) ---
     ddy_recon = zeros(T_steps, 1);
