@@ -28,6 +28,10 @@ We employ an offline **RTS Smoother** and **EM Algorithm** to refine these estim
 
 The pipeline is split into Online (Data Generation) and Offline (Learning) stages:
 
+![Model Diagram](Images/flow_chart.png)
+
+
+
 # Stage 1: The "Reflex" (Online Control and Estimation)
 
 This stage runs in the Simulink environment (file single_track_v2.slx) and collects the data for the post-processing stage. Its purpose is to drive the vehicle using a stable ADRC control while simultaneously logging the necessary statistical data for the offline EM, RTS Smoother and Identification stages.
