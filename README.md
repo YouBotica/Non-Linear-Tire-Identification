@@ -448,3 +448,7 @@ As seen above, it was decided to turn off the residuals $P_1$, $P_2$ and $P_3$
 **Training Data: Identified NL Model vs Ground truth**
 
 ![Model Diagram](Images/identification_training_result.svg)
+
+**Validation Data: Identified NL Model vs Ground Truth(s)**
+
+![Model Diagram](Images/validation_oval.svg)
