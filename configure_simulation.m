@@ -28,10 +28,22 @@ control_param.ekf_Q_diag = [
     28.569; % xi_psi (Disturbance can change a lot!)
 ];
 
+% Front and rear tires Magic Formula:
+% These are the ground truth (unobserved) parameters of the non-linear tire
+% model we are trying to estimate
+veh_param.Br = 5; 
+veh_param.Cr = 2.0;
+veh_param.Dr = 1.0;
+veh_param.Er = 0.7;
+veh_param.Bf = 5; 
+veh_param.Cf = 2.0;
+veh_param.Df = 1.0;
+veh_param.Ef = 0.7;
+
 
 % Vehicle constants (to the best of our believe):
-veh_param.Caf = 63; % Approximated cornering stiffness of the front tire
-veh_param.Car = 63; % Approximated cornering stiffness of the rear tire
+veh_param.Caf = veh_param.Bf * veh_param.Cf * veh_param.Df; % Approximated cornering stiffness of the front tire
+veh_param.Car = veh_param.Br * veh_param.Cr * veh_param.Dr; % Approximated cornering stiffness of the rear tire
 veh_param.lf = 1.4; % Distance from CG to front axle
 veh_param.lr = 1.6; % Distance from CG to rear axle
 veh_param.m = 780; % Vehicle's mass (780 kg)
@@ -40,18 +52,6 @@ veh_param.Cd = 0.3; % Vehicle Aero Coefficient
 veh_param.g = 9.81;
 veh_param.h = 0.35;
 veh_param.initial_states = [5; 0; 0; 0; 0; 0]; % vx, control_param.dpsi_noise_pwrvy, dpsi, disturbance_x, disturbance_y, disturbance_dpsi
-
-% Front and rear tires Magic Formula:
-% These are the ground truth (unobserved) parameters of the non-linear tire
-% model we are trying to estimate
-veh_param.Br = 22; 
-veh_param.Cr = 1.8;
-veh_param.Dr = 1.6;
-veh_param.Er = 0.8;
-veh_param.Bf = 22; 
-veh_param.Cf = 1.8;
-veh_param.Df = 1.6;
-veh_param.Ef = 0.8;
 
 
 % --- 2. Define Track Parameters ---

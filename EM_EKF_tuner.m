@@ -57,7 +57,7 @@ jitter = 1e-6;
 
 
 % --- 3. EM Loop ---
-MAX_ITER = 100; % 15-20 is usually enough for convergence
+MAX_ITER = 30; % 15-20 is usually enough for convergence
 log_likelihood_history = zeros(MAX_ITER, 1);
 
 fprintf('Starting EM Algorithm (%d iterations)...\n', MAX_ITER);

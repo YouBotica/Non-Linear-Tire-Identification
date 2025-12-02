@@ -6,18 +6,18 @@ function [loss] = loss_function_weighted(params, states_smooth, inputs_log, Fz_d
     % --- 2. Calculate Weighted Data Loss (Likelihood) ---
     residuals = y_target - y_predict;
     safe_variance = max(y_target_variance, 1e-6); 
-    % data_loss = (residuals.^2);
-    data_loss = sum((residuals.^2) ./ safe_variance);
+    data_loss = sum(residuals.^2);
+    % data_loss = sum((residuals.^2) ./ safe_variance);
     
     % --- 3. Calculate Prior Regularization (Safety Net) ---
     % "Don't stray too far from the initial guess"
-    lambda_prior = 0.1; % Keep this relatively loose
+    lambda_prior = 1.0; % Keep this relatively loose
     
     scale_factors = abs(initial_guess);
     scale_factors(scale_factors < 1e-6) = 1.0;
     
     % Weights: Punish residuals (9-11) less than Pacejka (1-8)
-    prior_weights = [1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1];
+    prior_weights = [1, 1, 1, 1, 1, 1, 1, 1, 0.5, 0.5, 0.5];
     
     param_dev = ((params - initial_guess) ./ scale_factors) .* prior_weights;
     prior_loss = lambda_prior * sum(param_dev.^2);
@@ -25,7 +25,7 @@ function [loss] = loss_function_weighted(params, states_smooth, inputs_log, Fz_d
     % --- 4. (NEW) Calculate Similarity Loss (Front vs Rear) ---
     % "Front tires should behave similarly to Rear tires"
     
-    lambda_sim = 1000; % <-- TUNING KNOB: Higher = Force them closer together
+    lambda_sim = 15000; % <-- TUNING KNOB: Higher = Force them closer together
     
     % Extract Pacejka params
     p_front = params(1:4); % [Bf, Cf, Df, Ef]
