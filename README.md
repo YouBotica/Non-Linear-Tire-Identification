@@ -162,8 +162,7 @@ $$
     0 & N_v & N_r & 0 & 0 & 1/I_{zz} \\
     \mathbf{0}_{3 \times 6}
 \end{bmatrix}
-\mathbf{x}
-+ \mathbf{B}\mathbf{u}
+\mathbf{x} + \mathbf{B}\mathbf{u}
 $$
 
 Notice that the three last rows are all zeros, this is common in the ADRC framework where the lumped disturbance terms are assumed to be constant, at least in an infinitesimal period of time, and allow the Extended-State Observer to estimate these lumped disturbance states with good bandwidth. 
@@ -204,7 +203,7 @@ Then, this yaw rate control structure is used to close and outside cascade contr
 
 ![Model Diagram](Images/block_diagram_control.png)
 
-**Controller Identification Experimental Results**
+**Controller Experimental Results (Running an experiment for Sys ID in Closed Loop)**
 
 
 Heading controller (cascaded with the yaw rate ADRC):
@@ -335,23 +334,19 @@ Since $X$ is unknown, we compute the expected value of the sufficient statistics
 
 The **M-Step** maximizes the expected complete data log-likelihood $\mathcal{Q}(\phi, \phi^{(k)}) = \mathbb{E}_{X|Y, \phi^{(k)}} [\log \mathcal{L}(X \mid Y; \phi)]$ with respect to the parameters $\phi$.
 
-#### Update for Measurement Noise Covariance ($R$)
+#### Update for Measurement Noise Covariance ( $R$ )
 
-* **New $R$ Estimate ($\hat{R}_{\text{new}}$):**
-    $$\hat{R}_{\text{new}} = \frac{1}{T} \sum_{t=1}^{T} \left[ (Y_t - C \hat{X}_{t|T})(Y_t - C \hat{X}_{t|T})^T + C P_{t|T} C^T \right]$$
+  $$
+  \hat{R}_{\text{new}} = \frac{1}{T} \sum_{t=1}^{T} \left( Y_t - C \hat{x}_{t|T} \right) \left( Y_t - C \hat{x}_{t|T} \right)^T + C P_{t|T} C^T 
+  $$
 
-#### Update for Process Noise Covariance ($Q$)
+#### Update for Process Noise Covariance ( $Q$ )
 
-* **New $Q$ Estimate ($\hat{Q}_{\text{new}}$):**
-    $$\hat{Q}_{\text{new}} = \frac{1}{T} \sum_{t=1}^{T} \mathbb{E}[(X_t - A X_{t-1} - B U_t)(X_t - A X_{t-1} - B U_t)^T | Y_{1:T}]$$
+  $$
+    \hat{Q}_{\text{new}} = \frac{1}{T} \sum_{t=1}^{T} \mathbb{E}[ (X_t - A X_{t-1} - B U_t) (X_t - A X_{t-1} - B U_t)^T | Y_{1:T} ]
+  $$
 
 #### $\mathcal{Q}_{\text{new}}$ Expression (for matrix $A$ update, $B=0$, $U_t=0$)
-
-Your note shows the partial result for updating $\mathcal{Q}$:
-$$
-\mathcal{Q}_{\text{new}} \propto - \frac{1}{2} \sum_{t=1}^{T} \left[ \Sigma_t + A P_{t-1|T} A^T + P_{t|T} - P_{t, t-1|T} A^T - A P_{t, t-1|T}^T \right]
-$$
-Where $\Sigma_t = (\hat{X}_{t|T} - \hat{X}_{t|t-1}) (\hat{X}_{t|T} - \hat{X}_{t|t-1})^T$.
 
 
 **After running the EM auto-tuner for the EKF and Smoother, we get the following results:**
