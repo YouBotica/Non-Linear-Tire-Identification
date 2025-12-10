@@ -88,9 +88,9 @@ $$
 
 This load transfer coupling allows the front and rear axles to have different frictions with the ground while turning.
 
-### **Non-Linear Dynamics ($\ddot{\psi}_{NL}$)**
+### **Non-Linear Dynamics ($\ddot{y}_{NL}$)**
 
-The actual yaw acceleration in the plant is the complex non-linear sum of these forces (plus any aerodynamics/external effects):
+The lateral acceleration of the car is modeled by the sum of these non-linear forces (plus any aerodynamics/external/internal effects):
 
 $$
 \ddot{y}_{NL} = \frac{F_{y,f} + F_{y,r}}{m} + a_{y,residual}
