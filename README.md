@@ -17,11 +17,12 @@ We employ an offline **RTS Smoother** and **EM Algorithm** to refine these estim
 
 ## How to run?
 **Note:** We use Matlab and Simulink, any version above 2020ish should work.
-1. Clone the "main" branch 
-2. Run the script **configure_simulation.m**, this will load the variables necessary to run the Simulink Simulator and collect the identification data.
-3. Run the Simulink simulation, which is **single_track_v2.slx**, in the leftmost part you will find two manual switches, you dont have to touch this to run the simulation, but this allows you to toggle between validation (unseen) data and training. You can use either for train/val, I usually use the "generate_reference_trajectory" one for identification, but in practice, performing such maneuver (depending on the track) might not be possible. After the simulation is over, training data will be logged and saved in your Matlab Workspace. This simulation will run the ADRC - EKF based controller to perform an experiment in closed loop.
-4. Run the file **EM_EKF_Tuner.m** from Matlab, this will run the EM algorithm that will find optimal process Noise Q and Measurement Noise R Matrices by running forward pass (EKF) and backward passes (RTS Smoother) iteratively and will maximize the log-likelihood. You can adjust the number of iterations. By default it has a decently tuned configuration, but you can mess it up and then run this to improve the process and measurement noises.
-5. Now, you have your golden dataset ready for identification, run **identify_non_linear_tires.m** to identify the non-linear lateral dynamics by fitting the data using the knobs $\theta$.
+1. Clone the "main" branch
+2. Open Matlab and Simulink and open this project's folder. WARNING: It is paramount that in Matlab you open the project folder, otherwise the steps below will not work. Matlab needs the project path to be able to know where the files are located.
+3. Run the script **configure_simulation.m**, this will load the variables necessary to run the Simulink Simulator in the next step.
+4. Run the Simulink simulation, which is **single_track_v2.slx**, in the leftmost part you will find two manual switches, you dont have to touch this to run the simulation, but this allows you to toggle between validation (unseen) data and training. You can use either for train/val, I usually use the "generate_reference_trajectory" one for identification, but in practice, performing such maneuver (depending on the track) might not be possible. You can also create and connect here references of your own. After the simulation is over, training data will be logged and saved in your Matlab Workspace. This is logging the identification data for training.
+5. Run the file **EM_EKF_Tuner.m** from Matlab, this will run the EM algorithm that will find optimal process Noise Q and Measurement Noise R Matrices by running forward pass (EKF) and backward passes (RTS Smoother) iteratively and will maximize the log-likelihood. You can adjust the number of iterations. By default it has a decently tuned configuration, but you can mess it up and then run this to improve the process and measurement noises.
+6. Now, you have your golden dataset ready for identification, run **identify_non_linear_tires.m** to identify the non-linear lateral dynamics by fitting the data by varying the parameters (knobs) $\theta$.
 
 
 ## System Architecture: Two-Stage Pipeline
